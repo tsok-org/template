@@ -1,0 +1,15 @@
+{
+    "recommendations": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "nrwl.angular-console",
+        "esbenp.prettier-vscode",
+        "firsttris.vscode-jest-runner",
+        "Orta.vscode-jest",
+        "dbaeumer.vscode-eslint",
+        "GitHub.vscode-pull-request-github",
+        "GitHub.vscode-github-actions",
+        "bierner.markdown-preview-github-styles",
+        "bierner.markdown-mermaid"
+    ]
+}

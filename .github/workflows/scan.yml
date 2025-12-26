@@ -1,0 +1,29 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                                 SCANNING                                     ║
+# ╠══════════════════════════════════════════════════════════════════════════════╣
+# ║  Scans for leaked secrets using Gitleaks.                                   ║
+# ║  Uses reusable workflow from tsok-org/.github                               ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+name: Scan
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  leak-scan:
+    name: Scan
+    uses: tsok-org/.github/.github/workflows/gitleaks.yml@main
+    with:
+      config_path: ".gitleaks.toml"
+      fail_on_leak: true
+    secrets:
+      gitleaks_license: ${{ secrets.GITLEAKS_LICENSE }}
+    permissions:
+      contents: read
+      pull-requests: read
+      security-events: write

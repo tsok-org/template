@@ -1,0 +1,44 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                        CONTINUOUS INTEGRATION                                ║
+# ╠══════════════════════════════════════════════════════════════════════════════╣
+# ║  Runs lint, test, and build on affected projects.                           ║
+# ║  Uses reusable workflow from tsok-org/.github                               ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+name: Continuous Integration
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [next, main, develop, dependabot/**]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  workflow_call:
+    # This allows the workflow to be called from other workflows
+
+permissions:
+  actions: read
+  contents: read
+  checks: write
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    uses: tsok-org/.github/.github/workflows/nx-ci.yml@main
+    with:
+      # Tasks
+      lint: true
+      test: true
+      build: true
+      coverage: true
+
+      # Execution
+      parallel: 3
+
+    secrets:
+      nx_cloud_access_token: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}

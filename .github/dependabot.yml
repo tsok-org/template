@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  - package-ecosystem: "npm"
+    directories:
+      - "**/*"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "00:00"
+      timezone: "America/Toronto"
+    ignore:
+      - dependency-name: "@nx/*"
+      - dependency-name: "nx"
+      # Ignore all major updates - only allow minor and patch
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+    cooldown:
+      default-days: 7
+      semver-minor-days: 5
+      semver-patch-days: 2
+      include:
+        - "*"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+      prefix-development: "chore"

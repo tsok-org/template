@@ -1,0 +1,28 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                        DEPENDABOT AUTO-MERGE                                 ║
+# ╠══════════════════════════════════════════════════════════════════════════════╣
+# ║  Automatically merges Dependabot PRs based on update type.                  ║
+# ║  Uses reusable workflow from tsok-org/.github                               ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Dependabot
+    uses: tsok-org/.github/.github/workflows/dependabot-auto-merge.yml@main
+    with:
+      # Auto-merge up to minor updates (patch + minor, not major)
+      merge_level: "minor"
+      # GitHub App for branch protection bypass
+      github_app_id: ${{ vars.OPERATOR_GITHUB_APPLICATION_ID }}
+    secrets:
+      github_app_private_key: ${{ secrets.OPERATOR_GITHUB_APP_PRIVATE_KEY }}

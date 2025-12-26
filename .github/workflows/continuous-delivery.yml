@@ -1,0 +1,215 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                          CONTINUOUS DELIVERY                                 ║
+# ╠══════════════════════════════════════════════════════════════════════════════╣
+# ║  Handles versioning, changelog, and releases with the following strategy:   ║
+# ║                                                                              ║
+# ║  ┌─────────────────────────────────────────────────────────────────────────┐ ║
+# ║  │ Trigger              │ Pre-ID      │ npm Tag   │ Example                │ ║
+# ║  │ ─────────────────────────────────────────────────────────────────────── │ ║
+# ║  │ PR {type}/* → develop│ {type}.N    │ pr-N      │ 1.2.3-feature.42.0     │ ║
+# ║  │ PR develop → next    │ alpha       │ alpha     │ 1.2.3-alpha.0          │ ║
+# ║  │ PR next → main       │ rc          │ rc        │ 1.2.3-rc.0             │ ║
+# ║  │ develop (scheduled)  │ canary      │ canary    │ 1.2.3-canary.0         │ ║
+# ║  │ develop (manual)     │ dev         │ dev       │ 1.2.3-dev.0            │ ║
+# ║  │ next (push)          │ beta        │ beta      │ 1.2.3-beta.0           │ ║
+# ║  │ next (scheduled)     │ next        │ next      │ 1.2.3-next.0           │ ║
+# ║  │ main (push)          │ rc          │ rc        │ 1.2.3-rc.0             │ ║
+# ║  │ main (manual)        │ (none)      │ latest    │ 1.2.3                  │ ║
+# ║  └─────────────────────────────────────────────────────────────────────────┘ ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+name: Continuous Delivery
+
+on:
+  push:
+    branches: [main, next]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  schedule:
+    # Canary releases: Run at midnight UTC for develop branch
+    - cron: "0 0 * * *"
+    # Next releases: Run at 06:00 UTC for next branch
+    - cron: "0 6 * * *"
+  pull_request:
+    types: [labeled]
+    branches: [develop, next, main]
+  workflow_dispatch:
+    # Branch is selected via GitHub UI's branch selector
+    # Only main, next, and develop branches produce valid releases
+
+permissions: write-all
+
+concurrency:
+  group: >-
+    cd-${{
+      github.event_name == 'pull_request'
+        && format('pr-{0}', github.event.pull_request.number)
+        || github.event_name == 'schedule'
+        && (github.event.schedule == '0 0 * * *' && 'develop-canary' || 'next-scheduled')
+        || github.ref
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # 🔧 DETERMINE RELEASE CONFIGURATION
+  # ════════════════════════════════════════════════════════════════════════════
+
+  config:
+    name: Configure Release
+    runs-on: ubuntu-latest
+    # Only run for:
+    # - Push to main or next
+    # - Scheduled runs (nightly alpha from develop)
+    # - Manual dispatch
+    # - PRs with 'release' label
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'schedule' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'release')
+
+    outputs:
+      ref: ${{ steps.config.outputs.ref }}
+      preid: ${{ steps.config.outputs.preid }}
+      dist_tag: ${{ steps.config.outputs.dist_tag }}
+      prerelease: ${{ steps.config.outputs.prerelease }}
+
+    steps:
+      - name: Determine release configuration
+        id: config
+        run: |
+          PRERELEASE="true"
+          PREID=""
+          DIST_TAG="latest"
+          REF="${{ github.ref }}"
+
+          case "${{ github.event_name }}" in
+            push)
+              if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+                # Push to main = RC release (stable is manual only!)
+                PREID="rc"
+                DIST_TAG="rc"
+                echo "📦 Release Candidate from main (stable requires manual dispatch)"
+              elif [[ "${{ github.ref }}" == "refs/heads/next" ]]; then
+                PREID="beta"
+                DIST_TAG="beta"
+                echo "📦 Beta release from next"
+              fi
+              ;;
+            schedule)
+              # Determine which schedule triggered based on cron expression
+              if [[ "${{ github.event.schedule }}" == "0 0 * * *" ]]; then
+                # 00:00 UTC = develop → canary
+                REF="develop"
+                PREID="canary"
+                DIST_TAG="canary"
+                echo "📦 Canary release from develop (scheduled)"
+              else
+                # 06:00 UTC = next → next
+                REF="next"
+                PREID="next"
+                DIST_TAG="next"
+                echo "📦 Next release from next (scheduled)"
+              fi
+              ;;
+            pull_request)
+              REF="${{ github.event.pull_request.head.ref }}"
+              PR_NUM="${{ github.event.pull_request.number }}"
+              BASE_BRANCH="${{ github.event.pull_request.base.ref }}"
+              HEAD_BRANCH="${{ github.event.pull_request.head.ref }}"
+
+              # Determine preid based on PR target branch
+              case "$BASE_BRANCH" in
+                main)
+                  # PR next → main = RC
+                  PREID="rc"
+                  DIST_TAG="rc"
+                  echo "📦 Release Candidate: PR #$PR_NUM ($HEAD_BRANCH → main)"
+                  ;;
+                next)
+                  # PR develop → next = Alpha
+                  PREID="alpha"
+                  DIST_TAG="alpha"
+                  echo "📦 Alpha release: PR #$PR_NUM ($HEAD_BRANCH → next)"
+                  ;;
+                develop)
+                  # PR feature/* → develop = extract branch type
+                  if [[ "$HEAD_BRANCH" == */* ]]; then
+                    # Extract prefix before first / (feature, hotfix, bugfix, etc.)
+                    BRANCH_TYPE="${HEAD_BRANCH%%/*}"
+                  else
+                    # No prefix, use generic 'pr'
+                    BRANCH_TYPE="pr"
+                  fi
+                  PREID="${BRANCH_TYPE}.${PR_NUM}"
+                  DIST_TAG="pr-${PR_NUM}"
+                  echo "📦 PR preview release: ${BRANCH_TYPE}.${PR_NUM} ($HEAD_BRANCH → develop)"
+                  ;;
+              esac
+              ;;
+            workflow_dispatch)
+              REF="${{ github.ref_name }}"
+              case "$REF" in
+                main)
+                  # Manual main = STABLE release
+                  PREID=""
+                  DIST_TAG="latest"
+                  PRERELEASE="false"
+                  echo "📦 Stable release from main (manual)"
+                  ;;
+                next)
+                  # Manual next = next (same as scheduled)
+                  PREID="next"
+                  DIST_TAG="next"
+                  echo "📦 Next release from next (manual)"
+                  ;;
+                develop)
+                  # Manual develop = dev (on-demand development build)
+                  PREID="dev"
+                  DIST_TAG="dev"
+                  echo "📦 Dev release from develop (manual)"
+                  ;;
+                *)
+                  echo "❌ Invalid branch for manual release: $REF"
+                  echo "   Only main, next, and develop branches can trigger releases."
+                  exit 1
+                  ;;
+              esac
+              ;;
+          esac
+
+          echo "ref=$REF" >> $GITHUB_OUTPUT
+          echo "preid=$PREID" >> $GITHUB_OUTPUT
+          echo "dist_tag=$DIST_TAG" >> $GITHUB_OUTPUT
+          echo "prerelease=$PRERELEASE" >> $GITHUB_OUTPUT
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # 🚀 RELEASE
+  # ════════════════════════════════════════════════════════════════════════════
+
+  release:
+    name: Release
+    needs: config
+    uses: tsok-org/.github/.github/workflows/nx-cd.yml@main
+    with:
+      # Git configuration
+      ref: ${{ needs.config.outputs.ref }}
+
+      # Version configuration
+      preid: ${{ needs.config.outputs.preid }}
+      dist_tag: ${{ needs.config.outputs.dist_tag }}
+      github_prerelease: ${{ needs.config.outputs.prerelease == 'true' }}
+
+      # Publishing
+      publish_docker: true
+      docker_registry: ghcr.io
+      docker_platforms: "linux/amd64,linux/arm64"
+
+      # GitHub App for branch protection bypass
+      github_app_id: ${{ vars.OPERATOR_GITHUB_APPLICATION_ID }}
+
+    secrets:
+      github_app_private_key: ${{ secrets.OPERATOR_GITHUB_APP_PRIVATE_KEY }}
+      nx_cloud_access_token: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}

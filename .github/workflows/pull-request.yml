@@ -1,0 +1,20 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                         PULL REQUEST VALIDATION                              ║
+# ╠══════════════════════════════════════════════════════════════════════════════╣
+# ║  Validates PR titles follow conventional commit format.                      ║
+# ║  Uses reusable workflow from tsok-org/.github                               ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+
+name: Pull Request Validation
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate:
+    name: Validate
+    uses: tsok-org/.github/.github/workflows/pr-validate.yml@main
+    permissions:
+      pull-requests: read
+      statuses: write

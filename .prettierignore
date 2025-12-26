@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Cache
+.nx/
+.cache/
+
+# Coverage
+coverage/
+
+# Generated
+*.d.ts
+!src/**/*.d.ts

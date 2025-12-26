@@ -1,0 +1,92 @@
+# ╔══════════════════════════════════════════════════════════════════════════════╗
+# ║                      ENVIRONMENT CONFIGURATION                               ║
+# ╠══════════════════════════════════════════════════════════════════════════════╣
+# ║  Declarative environment setup for CI/CD                                     ║
+# ║  Used by: tsok-org/.github/actions/environment-setup                        ║
+# ╚══════════════════════════════════════════════════════════════════════════════╝
+#
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ CREDENTIAL HANDLING                                                         │
+# ├─────────────────────────────────────────────────────────────────────────────┤
+# │ Sensitive values are provided via environment variables in workflows:       │
+# │                                                                             │
+# │   DOCKER_REGISTRY, DOCKER_USERNAME, DOCKER_PASSWORD                        │
+# │   POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB                            │
+# │   REDIS_PASSWORD                                                           │
+# │   NPM_TOKEN                                                                │
+# │   GOOGLE_CREDENTIALS                                                       │
+# │                                                                             │
+# │ Never commit credentials to this file!                                      │
+# └─────────────────────────────────────────────────────────────────────────────┘
+
+version: "1"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Node.js Runtime
+# ─────────────────────────────────────────────────────────────────────────────
+node:
+  # Version source: file reference or explicit version
+  # Supports: ".node-version", ".nvmrc", "package.json", or explicit "22.x"
+  version: ".node-version"
+
+  # Package manager: "auto", "npm", "pnpm", "yarn", "bun"
+  # "auto" detects from lockfile
+  package_manager: auto
+
+  # Whether to run install command
+  install: true
+
+  # Cache dependencies between runs
+  cache: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Python Runtime (optional)
+# ─────────────────────────────────────────────────────────────────────────────
+# python:
+#   version: "3.12"
+#   package_manager: poetry  # pip, poetry, uv
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Terraform (optional - for infrastructure projects)
+# ─────────────────────────────────────────────────────────────────────────────
+# terraform:
+#   version: "1.12.2"  # or "latest"
+# terragrunt:
+#   version: "0.77.0"  # or "latest"
+# tflint: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker (optional - for building/pushing images)
+# ─────────────────────────────────────────────────────────────────────────────
+docker:
+  buildx: true
+  platforms:
+    - linux/amd64
+    - linux/arm64
+  # Registry from DOCKER_REGISTRY env var, fallback to ghcr.io
+  registry: ghcr.io
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Services (optional - for integration tests)
+# ─────────────────────────────────────────────────────────────────────────────
+# Services are started as Docker containers.
+# Credentials come from environment variables.
+#
+# services:
+#   postgres:
+#     image: postgres:16-alpine
+#     port: 5432
+#     # POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB from env vars
+#
+#   redis:
+#     image: redis:7-alpine
+#     port: 6379
+#     args:
+#       - "--requirepass"
+#       - "${REDIS_PASSWORD}"
+#
+#   nats:
+#     image: nats:2.10-alpine
+#     port: 4222
+#     args:
+#       - "--jetstream"

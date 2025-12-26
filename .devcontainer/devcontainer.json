@@ -1,0 +1,53 @@
+{
+    "name": "source-code",
+    "build": {
+        "dockerfile": "Containerfile",
+        "args": {
+            "HTTP_PROXY": "${localEnv:HTTP_PROXY}",
+            "HTTPS_PROXY": "${localEnv:HTTPS_PROXY}",
+            "http_proxy": "${localEnv:http_proxy}",
+            "https_proxy": "${localEnv:https_proxy}"
+        }
+    },
+    "forwardPorts": [
+        3000,
+        4200,
+        8080
+    ],
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {},
+        "ghcr.io/devcontainers/features/git-lfs:1": {},
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "24.3.0"
+        },
+        "ghcr.io/balazs23/devcontainers-features/nx:1": {},
+        "ghcr.io/devcontainers/features/docker-in-docker:2.12.2": {},
+        "ghcr.io/devcontainers-extra/features/gh-cli:1": {},
+        "ghcr.io/devcontainers-extra/features/zsh-plugins:0": {
+            "plugins": "zsh-autosuggestions zsh-syntax-highlighting zsh-completions zsh-fzf-history-search git node npm vscode z",
+            "omzPlugins": "https://github.com/zsh-users/zsh-autosuggestions.git https://github.com/zsh-users/zsh-syntax-highlighting.git https://github.com/zsh-users/zsh-completions.git https://github.com/joshskidmore/zsh-fzf-history-search.git https://github.com/agkozak/zsh-z.git"
+        }
+    },
+    "containerEnv": {
+        "HTTP_PROXY": "${localEnv:HTTP_PROXY}",
+        "HTTPS_PROXY": "${localEnv:HTTPS_PROXY}",
+        "http_proxy": "${localEnv:http_proxy}",
+        "https_proxy": "${localEnv:https_proxy}",
+        "NO_PROXY": "localhost, host.docker.internal",
+        "no_proxy": "localhost, host.docker.internal",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8"
+    },
+    "remoteEnv": {
+        "COREPACK_ENABLE_DOWNLOAD_PROMPT": "0",
+        "HTTP_PROXY": "${localEnv:HTTP_PROXY}",
+        "HTTPS_PROXY": "${localEnv:HTTPS_PROXY}",
+        "http_proxy": "${localEnv:http_proxy}",
+        "https_proxy": "${localEnv:https_proxy}",
+        "NO_PROXY": "localhost, host.docker.internal",
+        "no_proxy": "localhost, host.docker.internal"
+    },
+    "onCreateCommand": "zsh ./.devcontainer/on-create.sh",
+    "postCreateCommand": "zsh ./.devcontainer/post-create.sh",
+    "postStartCommand": "zsh ./.devcontainer/post-start.sh"
+}
